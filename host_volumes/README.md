@@ -14,7 +14,7 @@ Chatbot_data_for_Korean v1.0
                      
 ## Quick peek.                
                                      
-![quick_peek](./data.png)
+![quick_peek](./data/img/data.png)
 
 
 ## 관련 코드 : [Korean Language Model for Wellness Conversation](https://github.com/nawnoes/WellnessConversationAI?fbclid=IwAR3ZhXYW_DwI2RXP1mbHzvafGXF80QWERa4t6TTz_m2NQug5QwjOwQt6Hvw)
@@ -52,6 +52,6 @@ Youngsook Song.(2018). Chatbot_data_for_Korean v1.0)[Online]. Available : https:
 2. `훈련 과정`
 - 디코어에게 인코더가 보낸 Context vector와 실제 정답을 입력받고, 나와야 하는 정답을 알려주면서 훈련(실제 정답은 `<sos>`로 시작하는 문장, 나와야 하는 정답은 `<eos>`로 끝나는 문장)
 - 해당 과정을 교사 강요(teaching forcing)이라고 함
-![인코더에서 디코더까지의 문장 변환 흐름](./img/encoder_to_decoder.png)
+![인코더에서 디코더까지의 문장 변환 흐름](./data/img/encoder_to_decoder.png)
 
 Ref.[Blog wikidocs.net - seq2seq](https://wikidocs.net/24996)
