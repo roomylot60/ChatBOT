@@ -113,41 +113,45 @@ def load_vocabulary(path, vocab_path, tokenize_as_morph=False):
 
 # input data(list about indexed sentences, list for length of sentences)
 def enc_processing(value, dictionary, tokenize_as_morph=False):
-    # index
+    # 인덱스 값.(누적된다.)
     sequences_input_index = []
-    # length of sentences
+    # 하나의 인코딩 되는 문장 길이.(누적된다.)
     sequences_length = []
-    # Tokeninzing to morpheme or not
+    # 형태소 토크나이징 사용 유무
     if tokenize_as_morph:
         value = prepro_like_morpheme(value)
-    
+
+    # 한줄씩 불어온다.
     for sequence in value:
-        # remove special letter
+        # 특수문자 제거
         sequence = re.sub(CHANGE_FILTER, "", sequence)
-        # 하나의 문장을 인코딩할 때 잠시 사용할 저장공간
+        # 하나의 문장을 인코딩 할때 잠시 사용할 저장공간 : 매 문장마다 새로 만들어 사용할 것임
         sequence_index = []
-        # 문장을 띄어쓰기 단위(단어)로 분리
+        # 문장을 띄어쓰기 단위로 분리(단어가 됨)
         for word in sequence.split():
-            # 구분된 단어들이 단어 사전에 존재하는지 확인 후,
-            # sequence_index에 추가
+            # 잘려진 단어들이 단어 사전에 존재 하는지 보고
+            # 그 값을 가져와 sequence_index에 추가
             if dictionary.get(word) is not None:
                 sequence_index.extend([dictionary[word]])
-            # 단어가 사전에 존재하지 않을 경우,
-            # UNK(index = 3)를 넣어준다
+            # 잘려진 단어가 딕셔너리에 존재 하지 않는
+            # 경우 UNK(인덱스 : 3)를 넣어 준다.
             else:
                 sequence_index.extend([dictionary[UNK]])
-        # 문장 제한 길이보다 길 경우, 뒤의 token을 자름
+        # 문장 제한 길이보다 길어질 경우 뒤에 토큰을 자름
         if len(sequence_index) > MAX_SEQ:
             sequence_index = sequence_index[:MAX_SEQ]
-        # 하나의 문장의 길이 값 누적
+        # 하나의 문장의 길이값 누적
         sequences_length.append(len(sequence_index))
-        # max_sequence_length 보다 문장 길이가 작다면,
-        # 빈 부분에 PAD(index = 0)을 추가
+        # max_sequence_length보다 문장 길이가
+        # 작다면 빈 부분에 PAD(인덱스 0)를 넣어줌.
         sequence_index += (MAX_SEQ - len(sequence_index)) * [dictionary[PAD]]
-        # 인덱스 화 되어있는 값을
-        # sequences_input_index 에 추가
+        # 인덱스화 되어 있는 값을
+        # sequences_input_index에 넣어줌.
         sequences_input_index.append(sequence_index)
-    # 인덱스 화 된 일반 배열을 numpy 배열로 변경(tensorflow dataset에 입력값으로 변경)
+    # 인덱스화된 일반 배열을 넘파이 배열로 변경한다.
+    # 이유는 텐서플로우 dataset에 넣어 주기 위한
+    # 사전 작업.
+    # 넘파이 배열에 인덱스화된 배열과 그 길이를 넘김.
     return np.asarray(sequences_input_index), sequences_length
 
 # Function returning decoder input data(indexed sentences list, length of sentences)
