@@ -55,3 +55,11 @@ Youngsook Song.(2018). Chatbot_data_for_Korean v1.0)[Online]. Available : https:
 ![인코더에서 디코더까지의 문장 변환 흐름](./data/img/encoder_to_decoder.png)
 
 Ref.[Blog wikidocs.net - seq2seq](https://wikidocs.net/24996)
+
+### Version
+Ubuntu:20.04
+python3:3.8.10
+tensorflow:2.8.0
+pytorch:1.12.0
+Keras:2.8.0
+Konlpy:0.6.0
