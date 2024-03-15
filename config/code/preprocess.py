@@ -9,6 +9,7 @@ import pandas as pd
 # 종종 pip 이나 anaconda를 통해 module을 설치해도
 # python의 라이브러리 내부에 설치되지 않아 인식이 되지 않을 수 있음
 # Scripts 디렉토리에서 재설치하면 해결
+# 일괄적인 해결을 위해 가상환경 설정 후 가상환경 내부에서 설치하는 것이 바람직
 from tqdm import tqdm
 from konlpy.tag import Okt
 
