@@ -80,6 +80,7 @@ def load_vocabulary(path, vocab_path, tokenize_as_morph=False):
                 ans = prepro_like_morpheme(ans)
             data = []
             # .extend(전달값) : 전달값(iterable)을 하나씩 분해해서(리스트 구성을 제거하고) 리스트에 각 원소로 저장(!! .append()와 구분)
+            # 리스트 내부에 리스트 단위로 들어있는 문장 별 형태소를 data 리스트에 원소별로 저장
             data.extend(qst)
             data.extend(ans)
             
