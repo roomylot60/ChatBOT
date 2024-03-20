@@ -5,8 +5,13 @@ import pandas as pd
 
 from konlpy.tag import Okt
 
-global FILTERS
 FILTERS = "([~.,!?\"':;)(])"
+PAD = "<PAD>"
+STD = "<SOS>"
+END = "<END>"
+UNK = "<UNK>"
+MARKER =[PAD, STD, END, UNK]
+MAX_SEQ = 25
 
 def load_data(path):
     '''
@@ -52,6 +57,7 @@ def vocabLoader(path, vocab_path):
     '''
     if not os.path.exists(vocab_path):
         words = dictGenerator(path)
+        words[:0] = MARKER
         with open(vocab_path, 'w', encoding='utf-8') as vocabulary_file:
             for word in words:
                 vocabulary_file.write(word + '\n')
@@ -61,3 +67,17 @@ def vocabLoader(path, vocab_path):
             lines = vocabulary_file.readlines()
             for line in lines:
                 words.append(line.strip())
+    return words
+
+def indexing(words):
+    words_index = dict([(word, i+1) for i, word in range(enumerate(words))])
+    return words_index
+
+def encoding(sentences):
+    '''
+    Args:
+    Returns: Encoded vector(List) made of vocabulary index
+    '''
+    for sentence in sentences:
+        sentence
+    return
