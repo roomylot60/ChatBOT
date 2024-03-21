@@ -8,11 +8,12 @@ from konlpy.tag import Okt
 FILTERS = "([~.,!?\"':;)(])"
 PAD = "<PAD>"
 STD = "<SOS>"
-END = "<END>"
+END = "<EOS>"
 UNK = "<UNK>"
 MARKER =[PAD, STD, END, UNK]
 MAX_SEQ = 25
 
+# 데이터 로드 함수
 def load_data(path):
     '''
     Args:
@@ -25,6 +26,13 @@ def load_data(path):
     ans = list(df['A'])
     return qst, ans
 
+# 정규화 함수
+def normalize(sentence, pattern):
+    normalizer = re.compile(pattern)
+    n_sentence = normalizer.sub("", sentence)
+    return n_sentence
+
+# 형태소 단위로 토큰화하는 함수
 def morpheming(sentences):
     '''
     Args:
