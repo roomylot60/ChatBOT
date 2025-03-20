@@ -8,7 +8,7 @@ from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from Transformer import Transformer  # Transformer 모델 import
 
 # 데이터 로드
-df = pd.read_csv("../../data/ChatbotData.csv")
+df = pd.read_csv("../data/ChatbotData.csv")
 
 # 단어 사전 생성
 vocab = {"<PAD>": 0, "<SOS>": 1, "<EOS>": 2, "<UNK>": 3}
@@ -105,25 +105,57 @@ def calculate_bleu(model, dataloader, vocab, device):
     return avg_bleu
 
 # 🔹 챗봇 응답 테스트
-def chatbot_response(model, user_input, vocab, device):
+# Greedy Decoding 방식으로 챗봇 응답 생성
+# def chatbot_response(model, user_input, vocab, device):
+#     model.eval()
+#     tokens = [vocab.get(token, vocab["<UNK>"]) for token in user_input.split()] + [vocab["<EOS>"]]
+#     input_tensor = torch.tensor(tokens, dtype=torch.long).unsqueeze(0).to(device)
+
+#     dec_input = torch.tensor([vocab["<SOS>"]], dtype=torch.long).unsqueeze(0).to(device)
+
+#     with torch.no_grad():
+#         for _ in range(MAX_LENGTH):
+#             output = model(input_tensor, dec_input, training=False)  # 🔥 평가 시 `training=False`
+#             next_word = output.argmax(-1)[:, -1].item()
+
+#             if next_word == vocab["<EOS>"]:
+#                 break
+#             dec_input = torch.cat([dec_input, torch.tensor([[next_word]], dtype=torch.long).to(device)], dim=1)
+
+#     # 🔥 `<SOS>` 토큰 제거 후 응답 반환
+#     response_tokens = dec_input.squeeze(0).tolist()[1:]  # `<SOS>` 제거
+#     response = [word for word, idx in vocab.items() if idx in response_tokens]
+
+#     return " ".join(response)
+
+# Beam Search Decoding 방식으로 챗봇 응답 생성
+def chatbot_response(model, user_input, vocab, device, beam_size=3, max_length=50):
     model.eval()
     tokens = [vocab.get(token, vocab["<UNK>"]) for token in user_input.split()] + [vocab["<EOS>"]]
     input_tensor = torch.tensor(tokens, dtype=torch.long).unsqueeze(0).to(device)
 
-    dec_input = torch.tensor([vocab["<SOS>"]], dtype=torch.long).unsqueeze(0).to(device)
+    # 초기 디코더 입력값: <SOS>
+    dec_input = torch.tensor([[vocab["<SOS>"]]], dtype=torch.long).to(device)
+    sequences = [(dec_input, 0)]  # (현재 시퀀스, 누적 확률)
 
-    with torch.no_grad():
-        for _ in range(MAX_LENGTH):
-            output = model(input_tensor, dec_input, training=False)  # 🔥 평가 시 `training=False`
-            next_word = output.argmax(-1)[:, -1].item()
+    for _ in range(max_length):
+        all_candidates = []
+        for seq, score in sequences:
+            with torch.no_grad():
+                output = model(input_tensor, seq, training=False)  # Transformer 모델 예측
+                topk_probs, topk_indices = torch.topk(output[:, -1, :], beam_size)  # Top-k 선택
 
-            if next_word == vocab["<EOS>"]:
-                break
-            dec_input = torch.cat([dec_input, torch.tensor([[next_word]], dtype=torch.long).to(device)], dim=1)
+            for i in range(beam_size):
+                next_token = topk_indices[0, i].item()
+                new_seq = torch.cat([seq, torch.tensor([[next_token]], dtype=torch.long).to(device)], dim=1)
+                new_score = score + torch.log(topk_probs[0, i].item())  # 로그 확률 합산
+                all_candidates.append((new_seq, new_score))
 
-    # 🔥 `<SOS>` 토큰 제거 후 응답 반환
-    response_tokens = dec_input.squeeze(0).tolist()[1:]  # `<SOS>` 제거
-    response = [word for word, idx in vocab.items() if idx in response_tokens]
+        sequences = sorted(all_candidates, key=lambda x: x[1], reverse=True)[:beam_size]  # 상위 beam_size 개 선택
+
+    # 최종 선택된 시퀀스 중 가장 높은 확률을 가진 문장 선택
+    best_sequence = sequences[0][0].squeeze(0).tolist()[1:]  # `<SOS>` 제거
+    response = [word for word, idx in vocab.items() if idx in best_sequence and idx not in [vocab["<EOS>"], vocab["<PAD>"]]]
 
     return " ".join(response)
 
