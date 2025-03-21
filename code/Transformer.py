@@ -103,7 +103,7 @@ class TransformerDecoderLayer(nn.Module):
 
 # Transformer Model
 class Transformer(nn.Module):
-    def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size, target_vocab_size, dropout=0.1):
+    def __init__(self, num_layers, d_model, num_heads, dff, input_vocab_size, target_vocab_size, dropout=0.3): # 기존의 0.1 에서 0.3으로 변경(과적합 방지)
         super().__init__()
         self.embedding = nn.Embedding(input_vocab_size, d_model)
         self.encoder = TransformerEncoderLayer(d_model, num_heads, dff, dropout)

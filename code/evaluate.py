@@ -6,6 +6,7 @@ import pandas as pd
 from torch.utils.data import Dataset, DataLoader
 from nltk.translate.bleu_score import sentence_bleu, SmoothingFunction
 from Transformer import Transformer  # Transformer 모델 import
+from rouge_score import rouge_scorer
 
 # 데이터 로드
 df = pd.read_csv("../data/ChatbotData.csv")
@@ -19,7 +20,6 @@ for sentence in df["Q"].tolist() + df["A"].tolist():
 
 MAX_LENGTH = 50
 
-# 데이터셋 정의
 # 데이터셋 정의
 class ChatbotDataset(Dataset):
     def __init__(self, dataframe, vocab, max_length=MAX_LENGTH):
@@ -47,12 +47,13 @@ class ChatbotDataset(Dataset):
 dataset = ChatbotDataset(df, vocab)
 eval_loader = DataLoader(dataset, batch_size=1, shuffle=False)
 
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+device = torch.device("cpu")
+print("⚠️ GPU 사용 불가. CPU 모드로 실행합니다.")
 
 # 모델 생성 및 로드
 transformer = Transformer(num_layers=4, d_model=256, num_heads=8, dff=512, input_vocab_size=len(vocab), target_vocab_size=len(vocab), dropout=0.1).to(device)
-transformer.load_state_dict(torch.load("transformer_chatbot.pth"))
+transformer.load_state_dict(torch.load("../models/transformer_chatbot.pth", map_location=torch.device("cpu"))) # GPU에서 학습한 모델을 CPU로 로드
 transformer.eval()
 
 loss_fn = nn.CrossEntropyLoss(ignore_index=vocab["<PAD>"])
@@ -104,6 +105,36 @@ def calculate_bleu(model, dataloader, vocab, device):
     avg_bleu = total_bleu / total_samples
     return avg_bleu
 
+def calculate_rouge(model, dataloader, vocab, device):
+    scorer = rouge_scorer.RougeScorer(['rouge1', 'rougeL'], use_stemmer=True)
+    model.eval()
+
+    total_rouge1 = 0
+    total_rougeL = 0
+    total_samples = 0
+
+    with torch.no_grad():
+        for enc_input, dec_input in dataloader:
+            enc_input, dec_input = enc_input.to(device), dec_input.to(device)
+            output = model(enc_input, dec_input)
+            predicted_ids = output.argmax(dim=-1)
+
+            for i in range(enc_input.shape[0]):
+                reference = [idx for idx in dec_input[i].cpu().tolist() if idx not in [vocab["<PAD>"], vocab["<EOS>"]]]
+                candidate = [idx for idx in predicted_ids[i].cpu().tolist() if idx not in [vocab["<PAD>"], vocab["<EOS>"]]]
+
+                # idx → 단어로 변환
+                reference_text = " ".join([k for k, v in vocab.items() if v in reference])
+                candidate_text = " ".join([k for k, v in vocab.items() if v in candidate])
+
+                scores = scorer.score(reference_text, candidate_text)
+                total_rouge1 += scores['rouge1'].fmeasure
+                total_rougeL += scores['rougeL'].fmeasure
+                total_samples += 1
+
+    avg_rouge1 = total_rouge1 / total_samples
+    avg_rougeL = total_rougeL / total_samples
+    return avg_rouge1, avg_rougeL
 # 🔹 챗봇 응답 테스트
 # Greedy Decoding 방식으로 챗봇 응답 생성
 # def chatbot_response(model, user_input, vocab, device):
@@ -148,7 +179,7 @@ def chatbot_response(model, user_input, vocab, device, beam_size=3, max_length=5
             for i in range(beam_size):
                 next_token = topk_indices[0, i].item()
                 new_seq = torch.cat([seq, torch.tensor([[next_token]], dtype=torch.long).to(device)], dim=1)
-                new_score = score + torch.log(topk_probs[0, i].item())  # 로그 확률 합산
+                new_score = score + math.log(topk_probs[0, i].item())  # 로그 확률 합산
                 all_candidates.append((new_seq, new_score))
 
         sequences = sorted(all_candidates, key=lambda x: x[1], reverse=True)[:beam_size]  # 상위 beam_size 개 선택
