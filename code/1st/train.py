@@ -84,4 +84,4 @@ def train(epochs=10):
         print(f"\n✅ Epoch [{epoch+1}/{epochs}] 완료 - 평균 Loss: {avg_loss:.4f}, 학습 시간: {end_time - start_time:.2f}초\n")
 
 train(epochs=10)
-torch.save(transformer.state_dict(), "transformer_chatbot.pth")
+torch.save(transformer.state_dict(), "../../models/transformer_chatbot.pth")

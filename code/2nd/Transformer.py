@@ -17,8 +17,8 @@ class Transformer(nn.Module):
         self.final_layer = nn.Linear(d_model, target_vocab_size)
 
     def forward(self, src, tgt):
-        src_emb = self.embedding(src).permute(1, 0, 2)
-        tgt_emb = self.embedding(tgt).permute(1, 0, 2)
+        src_emb = self.embedding(src)  # [B, T, D]
+        tgt_emb = self.embedding(tgt)  # [B, T, D]
         memory = self.encoder(src_emb)
         output = self.decoder(tgt_emb, memory)
-        return self.final_layer(output.permute(1, 0, 2))
+        return self.final_layer(output)

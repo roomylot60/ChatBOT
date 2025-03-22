@@ -40,17 +40,32 @@ def build_embedding_matrix(vocab, w2v_model, dim=300):
             embedding_matrix[idx] = w2v_model.wv[word]
     return embedding_matrix
 
-def encode_sentences(sentences, vocab):
-    encoded = []
-    for sentence in sentences:
-        tokens = tokenize_morphs(sentence)
-        ids = [vocab.get(token, vocab[UNK]) for token in tokens][:MAX_SEQ]
-        ids += [vocab[PAD]] * (MAX_SEQ - len(ids))
-        encoded.append(ids)
-    return np.array(encoded)
+def encode_sentences(sentences, vocab, max_seq_length=25):  # ✅ 인자 이름 수정
+    output = []
+    for s in sentences:
+        tokens = tokenize_morphs(s)
+        ids = [vocab.get(token, vocab[UNK]) for token in tokens]
+        ids = ids[:max_seq_length]
+        ids += [vocab[PAD]] * (max_seq_length - len(ids))
+        output.append(ids)
+    return np.array(output)
 
-def decode_sentences(sentences, vocab):
-    return [[vocab[STD]] + [vocab.get(token, vocab[UNK]) for token in tokenize_morphs(s)][:MAX_SEQ - 1] for s in sentences]
+def decode_sentences(sentences, vocab, max_seq_length=25):
+    output = []
+    for s in sentences:
+        tokens = tokenize_morphs(s)
+        ids = [vocab[STD]] + [vocab.get(token, vocab[UNK]) for token in tokens]
+        ids = ids[:max_seq_length]
+        ids += [vocab[PAD]] * (max_seq_length - len(ids))
+        output.append(ids)
+    return np.array(output)
 
-def label_sentences(sentences, vocab):
-    return [[vocab.get(token, vocab[UNK]) for token in tokenize_morphs(s)][:MAX_SEQ - 1] + [vocab[END]] for s in sentences]
+def label_sentences(sentences, vocab, max_seq_length=25):
+    output = []
+    for s in sentences:
+        tokens = tokenize_morphs(s)
+        ids = [vocab.get(token, vocab[UNK]) for token in tokens]
+        ids = ids[:max_seq_length - 1] + [vocab[END]]  # 최대 길이 - 1까지 자르고 END 토큰 추가
+        ids += [vocab[PAD]] * (max_seq_length - len(ids))  # 패딩 추가
+        output.append(ids)
+    return np.array(output)
