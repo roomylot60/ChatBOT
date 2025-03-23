@@ -1,80 +1,63 @@
-# 🔧 개선된 train_transformer.py (Word2Vec + 형태소 분석 기반)
+# ✅ train.py (Korpora 기반 + Word2Vec + Transformer)
 import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import pandas as pd
-from gensim.models import Word2Vec
-from tqdm import tqdm
-from Transformer import Transformer
-from preprocess import encode_sentences, decode_sentences,label_sentences
-from preprocess import load_data, build_corpus, build_vocab, build_embedding_matrix
 from torch.nn.utils.rnn import pad_sequence
+from tqdm import tqdm
 import numpy as np
+from gensim.models import Word2Vec
+from preprocess import *
+from Transformer import Transformer
 
-# 🔹 데이터 로드 및 전처리
-DATA_PATH = "../../data/ChatbotData.csv"
-q_list, a_list = load_data(DATA_PATH)
+# 데이터 로딩 및 전처리
+print("[INFO] Korpora에서 챗봇 및 메신저 데이터 로드")
+q_list, a_list = load_korpora_corpus()
 corpus = build_corpus(q_list, a_list)
 vocab = build_vocab(corpus)
+
+print("[DEBUG] word2vec 학습을 위한 corpus 토큰 수:", len(corpus))
+if len(corpus) == 0:
+    raise ValueError("❌ 수집된 데이터가 없어서 Word2Vec 학습 불가합니다.")
+
+print(f"[INFO] Word2Vec 훈련 시작")
 w2v_model = Word2Vec(sentences=corpus, vector_size=300, window=5, min_count=1, workers=4)
 embedding_matrix = build_embedding_matrix(vocab, w2v_model, dim=300)
 
-MAX_SEQ = 25
-qst, ans = load_data(DATA_PATH)
-# enc = encode_sentences(qst, vocab)
-# dec_in = np.array(decode_sentences(ans, vocab))     # ✅ 확실하게 배열로 변환
-# dec_out = np.array(label_sentences(ans, vocab))
+enc = encode_sentences(q_list, vocab)
+dec_in = decode_sentences(a_list, vocab)
+dec_out = label_sentences(a_list, vocab)
 
-enc = encode_sentences(qst, vocab, max_seq_length=25)
-dec_in = decode_sentences(ans, vocab, max_seq_length=25)
-dec_out = label_sentences(ans, vocab, max_seq_length=25)
-
-print(f"[DEBUG] enc: {type(enc)}, shape: {np.array(enc).shape}")
-print(f"[DEBUG] dec_in: {type(dec_in)}, shape: {np.array(dec_in).shape}")
-print(f"[DEBUG] dec_out: {type(dec_out)}, shape: {np.array(dec_out).shape}")
-
-for i, d in enumerate(decode_sentences(ans, vocab)):
-    if len(d) != MAX_SEQ:
-        print(f"[❌] index {i}: length {len(d)} → {d}")
-
-# 🔹 ChatDataset 정의
+# Dataset 정의
 class ChatDataset(Dataset):
-    def __init__(self, q_list, a_list, vocab):
-        self.enc = encode_sentences(q_list, vocab)
-        self.dec_in = decode_sentences(a_list, vocab)
-        self.dec_out = label_sentences(a_list, vocab)
+    def __init__(self):
+        self.enc = torch.tensor(enc)
+        self.dec_in = torch.tensor(dec_in)
+        self.dec_out = torch.tensor(dec_out)
 
     def __len__(self):
         return len(self.enc)
 
     def __getitem__(self, idx):
-        enc = self.enc[idx]
-        dec_in = self.dec_in[idx]
-        dec_out = self.dec_out[idx]
+        return self.enc[idx], self.dec_in[idx], self.dec_out[idx]
 
-        if len(enc) != MAX_SEQ or len(dec_in) != MAX_SEQ or len(dec_out) != MAX_SEQ:
-            print(f"[🔍] idx={idx} | enc: {len(enc)} | dec_in: {len(dec_in)} | dec_out: {len(dec_out)}")
+PAD_IDX = vocab[PAD]
 
-        assert len(enc) == len(dec_in) == len(dec_out) == MAX_SEQ, "⚠️ 길이 불일치 발생"
-
-        return torch.tensor(enc), torch.tensor(dec_in), torch.tensor(dec_out)
-
-PAD = "<PAD>"
 def collate_fn(batch):
     enc, dec_in, dec_out = zip(*batch)
-    enc = pad_sequence(enc, batch_first=True, padding_value=vocab[PAD])
-    dec_in = pad_sequence(dec_in, batch_first=True, padding_value=vocab[PAD])
-    dec_out = pad_sequence(dec_out, batch_first=True, padding_value=vocab[PAD])
-    return enc, dec_in, dec_out
+    return (
+        pad_sequence(enc, batch_first=True, padding_value=PAD_IDX),
+        pad_sequence(dec_in, batch_first=True, padding_value=PAD_IDX),
+        pad_sequence(dec_out, batch_first=True, padding_value=PAD_IDX),
+    )
 
-# 🔹 DataLoader
+# DataLoader
 BATCH_SIZE = 32
-dataset = ChatDataset(q_list, a_list, vocab)
+dataset = ChatDataset()
 dataloader = DataLoader(dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
 
-# 🔹 모델 설정
+# 모델 정의
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = Transformer(
     num_layers=4,
@@ -86,42 +69,36 @@ model = Transformer(
     dropout=0.3
 ).to(device)
 
-# Pretrained Embedding 적용
 model.embedding.weight.data.copy_(torch.tensor(embedding_matrix, dtype=torch.float32))
-model.embedding.weight.requires_grad = False  # 🔒 고정 (선택)
+model.embedding.weight.requires_grad = False
 
-# 🔹 Optimizer & Loss
+# Optimizer & Loss
 optimizer = optim.Adam(model.parameters(), lr=5e-4)
-loss_fn = nn.CrossEntropyLoss(ignore_index=vocab["<PAD>"])
+loss_fn = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 
-# 🔹 훈련 루프
-
+# 학습 함수
 def train(epochs=10):
     model.train()
     for epoch in range(epochs):
         total_loss = 0
-        start = time.time()
-        progress_bar = tqdm(dataloader, desc=f"Epoch {epoch+1}/{epochs}")
-
-        for batch_idx, (enc, dec_in, dec_out) in enumerate(progress_bar):
-            enc, dec_in, dec_out = enc.to(device), dec_in.to(device), dec_out.to(device)
+        progress_bar = tqdm(dataloader, desc=f"[Epoch {epoch+1}]")
+        for enc_batch, dec_in_batch, dec_out_batch in progress_bar:
+            enc_batch, dec_in_batch, dec_out_batch = (
+                enc_batch.to(device), dec_in_batch.to(device), dec_out_batch.to(device)
+            )
 
             optimizer.zero_grad()
-            output = model(enc, dec_in)
-            loss = loss_fn(output.view(-1, output.size(-1)), dec_out.view(-1))
+            output = model(enc_batch, dec_in_batch)
+            loss = loss_fn(output.view(-1, output.size(-1)), dec_out_batch.view(-1))
             loss.backward()
             optimizer.step()
 
             total_loss += loss.item()
-            progress_bar.set_postfix({"Batch Loss": loss.item()})
+            progress_bar.set_postfix(loss=loss.item())
 
-        avg_loss = total_loss / len(dataloader)
-        print(f"\n✅ Epoch {epoch+1} 완료 - 평균 Loss: {avg_loss:.4f}, 시간: {time.time() - start:.2f}초\n")
+        print(f"\n✅ Epoch {epoch+1} | Avg Loss: {total_loss/len(dataloader):.4f}\n")
 
-# 🔹 학습 실행
 train(epochs=10)
 torch.save(model.state_dict(), "../../models/pretrained_transformer_model.pth")
-
-# 학습 후 Word2Vec 모델 저장
 w2v_model.save("../../models/word2vec_ko.model")
-print("✅ Word2Vec 모델이 word2vec_ko.model로 저장되었습니다.")
+print("✅ 학습된 모델과 Word2Vec 저장 완료")
