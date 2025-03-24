@@ -280,3 +280,75 @@ sentence_bleu([ref], hyp) vs corpus_bleu()
 |Fine-tune Embedding Layer|embedding.weight.requires_grad = True로 설정|
 |Validation Loss 기록|학습 중 overfitting 여부 판단 가능|
 |데이터 증강|paraphrasing 또는 GPT 기반 synthetic QA 생성|
+
+---
+
+## Korpora를 사용하여 대량의 데이터를 사용
+```python
+def load_korpora_corpus():
+    print("[INFO] Korpora에서 챗봇 및 다른 말뭉치 데이터 로드 중...")
+
+    open_q, open_a = [], []
+    nsmc_q, nsmc_a = [], []
+    modu_q, modu_a = [], []
+
+    try:
+        Korpora.fetch("open_subtitles")
+        open_subs = Korpora.load("open_subtitles")
+        for pair in open_subs.train:
+            if '\t' in pair.text:
+                q, a = pair.text.split('\t')
+                open_q.append(q.strip())
+                open_a.append(a.strip())
+        print(f"[OK] open_subtitles 데이터 로드 완료: {len(open_q)}쌍")
+    except Exception as e:
+        print(f"[FAIL] open_subtitles 로딩 실패: {e}")
+
+    try:
+        Korpora.fetch("nsmc")
+        nsmc = Korpora.load("nsmc")
+        nsmc_q = [pair.text.strip() for pair in nsmc.train]
+        nsmc_a = ["좋아요" if int(pair.label) else "별로예요" for pair in nsmc.train]
+        print(f"[OK] nsmc 데이터 로드 완료: {len(nsmc_q)}쌍")
+    except Exception as e:
+        print(f"[FAIL] nsmc 로딩 실패: {e}")
+
+    try:
+        korpora_root = os.path.abspath("data")
+        modu = Korpora.load("modu_messenger", root_dir=korpora_root)
+        modu_q = [line.text.strip() for line in modu.train]
+        modu_a = ["응" for _ in modu_q]
+        print(f"[OK] modu_messenger 수동 데이터 로드 완료: {len(modu_q)}쌍")
+    except Exception as e:
+        print(f"[FAIL] modu_messenger 로딩 실패: {e}")
+
+    q_list = open_q + nsmc_q + modu_q
+    a_list = open_a + nsmc_a + modu_a
+
+    print(f"[INFO] 총 수집된 질문-응답 쌍: {len(q_list)}")
+
+    return q_list, a_list
+```
+
+## 결과
+### 생성된 파일
+- train.py의 실행 결과물: 
+    - `pretrained_transformer_model.pth`
+    - `word2vec_ko.model`
+    - `word2vec_ko.model.syn1neg.npy`
+    - `word2vec_ko.model.ww.vectors.npy`
+- 생성된 파일 설명
+
+|파일 이름|설명|
+|---------|----------------------------------------|
+|word2vec_ko.model|Word2Vec 전체 모델을 포함하는 Gensim Binary Format 파일로 토큰화된 단어들, 벡터, 모델 구조, 파라미터 등을 포함|
+|word2vec_ko.model.wv.vectors.npy|단어 임베딩 행렬 (word vectors) 이 저장된 NumPy 배열로, model.wv[word] 로 접근할 수 있는 벡터들이 이 안에 저장|
+|word2vec_ko.model.syn1neg.npy|네거티브 샘플링을 위한 파라미터들이 저장된 NumPy 배열로, 훈련 과정에서 사용되는 syn1neg 히든 레이어 파라미터이며, 일반적으로 모델이 hs=0, negative>0 일 때 사용|
+
+- `.npy` 파일이 별도로 저장되는 이유:
+    - `Gensim`은 모델의 저장 용량과 로딩 속도를 최적화하기 위해 `.npy` 파일 형태로 일부 대형 파라미터를 분리해서 저장
+    - `.model` 파일에는 메타 정보와 구조만 포함되고, 실제 수천~수만 개의 벡터 값들은 .npy로 분리되어 효율적으로 저장
+    - **벡터가 매우 크거나**(Ex: 300차원 이상, 수만 단어 이상), 임베딩과 파라미터를 **별도로 로딩**하거나 **수정**하려는 경우, **빠른 모델 로딩 및 저장**이 필요한 상황에 유리
+- 따라서 이 세 파일은 함께 존재해야 완전한 Word2Vec 모델의 로드 가능
+- 만약 .model만 남기고 .npy들을 지우면, 로딩 시 오류가 발생
+
