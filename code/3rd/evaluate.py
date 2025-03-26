@@ -118,4 +118,3 @@ print(f"ROUGE-1 F1   : {rouge1:.4f}")
 print(f"ROUGE-L F1   : {rougeL:.4f}")
 print(f"Perplexity   : {ppl:.4f}")
 print(f"Accuracy     : {acc:.4f}")
-
