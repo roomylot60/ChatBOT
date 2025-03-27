@@ -20,3 +20,29 @@
 4. 학습 및 저장
 5. 챗봇 응답 생성
 
+### kobert_chatbot.pt
+- epoch = 3
+[✅ 성능 평가 결과]
+BLEU Score   : 0.0067
+ROUGE-1 F1   : 0.0000
+ROUGE-L F1   : 0.0000
+Accuracy     : 0.0000 
+
+### kobert_chatbot_best.pt
+- epoch = 5
+[✅ 성능 평가 결과]
+BLEU Score   : 0.0138
+ROUGE-1 F1   : 0.0000
+ROUGE-L F1   : 0.0000
+Accuracy     : 0.0000
+
+- epoch = 5
+- validation 수행
+[✅ 성능 평가 결과]
+BLEU Score   : 0.0104
+ROUGE-1 F1   : 0.0000
+ROUGE-L F1   : 0.0000
+Accuracy     : 0.0000
+Perplexity   : 39.2820
+
+### kobert_chatbot_best_epoch_10.pt
