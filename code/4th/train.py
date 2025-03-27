@@ -10,16 +10,16 @@ from transformers import AutoTokenizer, BertModel
 
 # 설정
 CORPUS_PATH = "data/output/corpus_tokenized.json"
-MODEL_SAVE_PATH = "models/kobert_chatbot.pt"
-MAX_LEN = 64
+MODEL_SAVE_PATH = "models/kobert_chatbot_epoch_5.pt"
+MAX_LEN = 128
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"[INFO] ✅ 사용 디바이스: {DEVICE}")
 
 # ✅ KoBERT 인코더 로드
-kobert_enc = BertModel.from_pretrained("monologg/kobert")
-print(f"[INFO] ✅ KoBERT 모델 로드 완료 - Vocab Size: {kobert_enc.vocab_size}")
+kobert_enc = BertModel.from_pretrained("monologg/kobert", trust_remote_code=True)
+print(f"[INFO] ✅ KoBERT 모델 로드 완료 - Vocab Size: {kobert_enc.config.vocab_size}")
 try:
-    tokenizer = AutoTokenizer.from_pretrained("monologg/kobert", use_fast=False)
+    tokenizer = AutoTokenizer.from_pretrained("monologg/kobert", use_fast=False, trust_remote_code=True)
     print(f"[INFO] 🔠 토크나이저 로드 완료 - Vocab Size: {tokenizer.vocab_size}")
     print(f"[INFO] ⛳ PAD ID: {tokenizer.pad_token_id}, CLS ID: {tokenizer.cls_token_id}, SEP ID: {tokenizer.sep_token_id}")
 except Exception as e:
@@ -89,7 +89,7 @@ print(f"[INFO] ✅ 모델 구조 생성 완료 - 총 파라미터 수: {sum(p.nu
 step = 0 # 배치 인덱스 추적용 변수
 
 # ✅ 학습 루프
-for epoch in range(3):
+for epoch in range(5):
     model.train()
     total_loss = 0
     print(f"\n[Epoch {epoch+1}] 시작")

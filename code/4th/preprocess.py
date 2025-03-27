@@ -8,7 +8,7 @@ from transformers import AutoTokenizer
 from tqdm import tqdm
 
 # ✅ 설정
-MAX_LEN = 64 # 답변을 너무 많이 자르는 것 같아서 128로 수정할까 고민 중
+MAX_LEN = 128 # 답변을 너무 많이 자르는 것 같아서 128로 수정할까 고민 중
 DATA_DIR = "data/Interview/Training/Labeling"
 TOKENIZER_PATH = os.path.join("data/output", "tokenizer")
 CORPUS_PATH = os.path.join("data/output", "corpus_tokenized.json")
@@ -60,7 +60,7 @@ def save_qa_pairs(qa_pairs):
         print("[INFO] 저장 완료: processed_interview_data.json")
 
 # ✅ KoBERT 토크나이저 로드
-tokenizer = AutoTokenizer.from_pretrained("monologg/kobert", use_fast=False)
+tokenizer = AutoTokenizer.from_pretrained("monologg/kobert", use_fast=False, trust_remote_code=True)
 print("[INFO] ✅ KoBERT 토크나이저 로드 완료")
 print(f"[INFO] 🔢 Vocab 크기: {tokenizer.vocab_size}")
 print(f"[INFO] 🔠 예시 토큰화: {tokenizer.tokenize('기분이 안 좋아')}")
