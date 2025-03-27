@@ -80,57 +80,58 @@ optimizer = optim.Adam(model.parameters(), lr=5e-5)
 loss_fn = nn.CrossEntropyLoss(ignore_index=pad_id)
 print(f"[INFO] ✅ 모델 구조 생성 완료 - 총 파라미터 수: {sum(p.numel() for p in model.parameters()):,}")
 
-# ✅ 학습 루프
-EPOCHS = 5
-best_val_loss = float("inf")
-step = 0
+if __name__ == "__main__":
+    # ✅ 학습 루프
+    EPOCHS = 5
+    best_val_loss = float("inf")
+    step = 0
 
-for epoch in range(EPOCHS):
-    model.train()
-    total_loss = 0
-    print(f"\n[Epoch {epoch+1}] 🔁 학습 시작")
+    for epoch in range(EPOCHS):
+        model.train()
+        total_loss = 0
+        print(f"\n[Epoch {epoch+1}] 🔁 학습 시작")
 
-    for enc_ids, enc_mask, tgt_ids in tqdm(train_loader, desc=f"[Training {epoch+1}]"):
-        enc_ids, enc_mask, tgt_ids = enc_ids.to(DEVICE), enc_mask.to(DEVICE), tgt_ids.to(DEVICE)
-        dec_input = tgt_ids[:, :-1]
-        dec_target = tgt_ids[:, 1:]
-
-        output = model(enc_ids, enc_mask, dec_input)
-        loss = loss_fn(output.view(-1, vocab_size), dec_target.reshape(-1))
-
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        total_loss += loss.item()
-
-        if step == 0:
-            print(f"\n[DEBUG] 🔍 첫 배치 샘플:")
-            print("🟩 질문 토큰 ID:", enc_ids[0].tolist())
-            print("🟦 응답(입력) 토큰 ID:", dec_input[0].tolist())
-            print("🟥 응답(타깃) 토큰 ID:", dec_target[0].tolist())
-            print("🧾 예시 질문:", tokenizer.convert_ids_to_tokens(enc_ids[0].tolist()))
-            print("🧾 예시 응답 입력:", tokenizer.convert_ids_to_tokens(dec_input[0].tolist()))
-        step += 1
-
-    avg_train_loss = total_loss / len(train_loader)
-
-    # ✅ 검증
-    model.eval()
-    val_loss = 0
-    with torch.no_grad():
-        for enc_ids, enc_mask, tgt_ids in val_loader:
+        for enc_ids, enc_mask, tgt_ids in tqdm(train_loader, desc=f"[Training {epoch+1}]"):
             enc_ids, enc_mask, tgt_ids = enc_ids.to(DEVICE), enc_mask.to(DEVICE), tgt_ids.to(DEVICE)
             dec_input = tgt_ids[:, :-1]
             dec_target = tgt_ids[:, 1:]
 
             output = model(enc_ids, enc_mask, dec_input)
             loss = loss_fn(output.view(-1, vocab_size), dec_target.reshape(-1))
-            val_loss += loss.item()
 
-    avg_val_loss = val_loss / len(val_loader)
-    print(f"[Epoch {epoch+1}] 📉 Train Loss: {avg_train_loss:.4f} | 🧪 Val Loss: {avg_val_loss:.4f}")
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
 
-    if avg_val_loss < best_val_loss:
-        torch.save(model.state_dict(), MODEL_SAVE_PATH)
-        print("[🔐 저장] ✅ 최적 검증 손실 모델 저장 완료")
-        best_val_loss = avg_val_loss
+            if step == 0:
+                print(f"\n[DEBUG] 🔍 첫 배치 샘플:")
+                print("🟩 질문 토큰 ID:", enc_ids[0].tolist())
+                print("🟦 응답(입력) 토큰 ID:", dec_input[0].tolist())
+                print("🟥 응답(타깃) 토큰 ID:", dec_target[0].tolist())
+                print("🧾 예시 질문:", tokenizer.convert_ids_to_tokens(enc_ids[0].tolist()))
+                print("🧾 예시 응답 입력:", tokenizer.convert_ids_to_tokens(dec_input[0].tolist()))
+            step += 1
+
+        avg_train_loss = total_loss / len(train_loader)
+
+        # ✅ 검증
+        model.eval()
+        val_loss = 0
+        with torch.no_grad():
+            for enc_ids, enc_mask, tgt_ids in val_loader:
+                enc_ids, enc_mask, tgt_ids = enc_ids.to(DEVICE), enc_mask.to(DEVICE), tgt_ids.to(DEVICE)
+                dec_input = tgt_ids[:, :-1]
+                dec_target = tgt_ids[:, 1:]
+
+                output = model(enc_ids, enc_mask, dec_input)
+                loss = loss_fn(output.view(-1, vocab_size), dec_target.reshape(-1))
+                val_loss += loss.item()
+
+        avg_val_loss = val_loss / len(val_loader)
+        print(f"[Epoch {epoch+1}] 📉 Train Loss: {avg_train_loss:.4f} | 🧪 Val Loss: {avg_val_loss:.4f}")
+
+        if avg_val_loss < best_val_loss:
+            torch.save(model.state_dict(), MODEL_SAVE_PATH)
+            print("[🔐 저장] ✅ 최적 검증 손실 모델 저장 완료")
+            best_val_loss = avg_val_loss
