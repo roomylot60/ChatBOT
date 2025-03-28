@@ -11,7 +11,7 @@ from transformers import AutoTokenizer, BertModel
 # 설정
 TRAIN_PATH = "data/output/corpus_train.json"
 VAL_PATH = "data/output/corpus_valid.json"
-MODEL_SAVE_PATH = "models/kobert_chatbot_best.pt"
+MODEL_SAVE_PATH = "models/kobert_chatbot_best_epoch_10.pt"
 MAX_LEN = 128
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"[INFO] ✅ 사용 디바이스: {DEVICE}")
@@ -82,7 +82,7 @@ print(f"[INFO] ✅ 모델 구조 생성 완료 - 총 파라미터 수: {sum(p.nu
 
 if __name__ == "__main__":
     # ✅ 학습 루프
-    EPOCHS = 5
+    EPOCHS = 10
     best_val_loss = float("inf")
     step = 0
 
