@@ -11,8 +11,8 @@ from transformers import AutoTokenizer, BertModel
 # 설정
 TRAIN_PATH = "data/output/corpus_train.json"
 VAL_PATH = "data/output/corpus_valid.json"
-MODEL_SAVE_PATH = "models/kobert_chatbot_best_epoch_10.pt"
-MAX_LEN = 128
+MODEL_SAVE_PATH = "models/layer_6_epoch_12_kobert.pt"
+MAX_LEN = 64
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"[INFO] ✅ 사용 디바이스: {DEVICE}")
 
@@ -25,7 +25,7 @@ pad_id = tokenizer.pad_token_id
 
 # ✅ 디코더 정의
 class TransformerDecoderModel(nn.Module):
-    def __init__(self, hidden_size=768, vocab_size=vocab_size, num_layers=4, num_heads=8, ff_dim=1024):
+    def __init__(self, hidden_size=768, vocab_size=vocab_size, num_layers=6, num_heads=8, ff_dim=1024):
         super().__init__()
         self.bert = kobert_enc
         self.decoder_embedding = nn.Embedding(vocab_size, hidden_size)
@@ -82,7 +82,7 @@ print(f"[INFO] ✅ 모델 구조 생성 완료 - 총 파라미터 수: {sum(p.nu
 
 if __name__ == "__main__":
     # ✅ 학습 루프
-    EPOCHS = 10
+    EPOCHS = 12
     best_val_loss = float("inf")
     step = 0
 

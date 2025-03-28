@@ -8,7 +8,7 @@ from transformers import AutoTokenizer
 from tqdm import tqdm
 
 # ✅ 설정
-MAX_LEN = 128 # 답변을 너무 많이 자르는 것 같아서 128로 수정할까 고민 중
+MAX_LEN = 64 # 답변을 너무 많이 자르는 것 같아서 128로 수정할까 고민 중
 TOKENIZER_PATH = "data/tokenizer"
 TRAIN_DIR = "data/Interview/Training/Labeling"
 VALID_DIR = "data/Interview/Validation/Labeling"
