@@ -58,3 +58,16 @@ ROUGE-1 F1   : 0.0000
 ROUGE-L F1   : 0.0000
 Accuracy     : 0.0000
 Perplexity   : 39.2820
+
+### layer_6_kobert_epoch_12.pt
+- epoch = 12
+- MEX_LEN = 64
+- validation 수행
+- decoder layer : 4 -> 6
+
+[✅ 성능 평가 결과]
+BLEU Score   : 0.0061
+ROUGE-1 F1   : 0.0000
+ROUGE-L F1   : 0.0000
+Accuracy     : 0.0000
+Perplexity   : 41.8616
