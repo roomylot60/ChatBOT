@@ -10,7 +10,7 @@ from rouge_score import rouge_scorer
 from tqdm import tqdm
 
 # 설정
-MODEL_PATH = "models/kobert_chatbot_best.pt"
+MODEL_PATH = "models/layer_6_epoch_12_kobert.pt"
 CORPUS_PATH = "data/output/corpus_valid.json"
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
