@@ -27,9 +27,18 @@ pad_id = tokenizer.pad_token_id
 class TransformerDecoderModel(nn.Module):
     def __init__(self, hidden_size=768, vocab_size=vocab_size, num_layers=6, num_heads=8, ff_dim=1024):
         super().__init__()
+
+        if hidden_size % num_heads != 0:
+            raise ValueError(f"`hidden_size` ({hidden_size}) must be divisible by `num_heads` ({num_heads})")
+
         self.bert = kobert_enc
         self.decoder_embedding = nn.Embedding(vocab_size, hidden_size)
-        decoder_layer = nn.TransformerDecoderLayer(d_model=hidden_size, nhead=num_heads, dim_feedforward=ff_dim, batch_first=True)
+        decoder_layer = nn.TransformerDecoderLayer(
+            d_model=hidden_size,
+            nhead=num_heads,
+            dim_feedforward=ff_dim,
+            batch_first=True
+        )
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
         self.output_layer = nn.Linear(hidden_size, vocab_size)
 
@@ -42,6 +51,7 @@ class TransformerDecoderModel(nn.Module):
 
     def generate_square_subsequent_mask(self, sz):
         return torch.triu(torch.ones(sz, sz) * float('-inf'), diagonal=1)
+
 
 # ✅ 데이터셋 정의
 class ChatDataset(Dataset):

@@ -60,12 +60,21 @@ dataset = ChatDataset(data)
 
 # 모델 정의
 class TransformerDecoderModel(nn.Module):
-    def __init__(self, hidden_size=768, vocab_size=tokenizer.vocab_size, num_layers=4, num_heads=8, ff_dim=1024):
+    def __init__(self, hidden_size=768, vocab_size=None, num_layers=4, num_heads=8, ff_dim=1024):
         super().__init__()
+
+        if hidden_size % num_heads != 0:
+            raise ValueError(f"`hidden_size` ({hidden_size}) must be divisible by `num_heads` ({num_heads})")
+
         self.bert = kobert_model
         self.decoder_embedding = nn.Embedding(vocab_size, hidden_size)
+
         decoder_layer = nn.TransformerDecoderLayer(
-            d_model=hidden_size, nhead=num_heads, dim_feedforward=ff_dim, batch_first=True)
+            d_model=hidden_size,
+            nhead=num_heads,
+            dim_feedforward=ff_dim,
+            batch_first=True
+        )
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
         self.output_layer = nn.Linear(hidden_size, vocab_size)
 
@@ -113,13 +122,24 @@ def evaluate(model, dataloader, loss_fn, device):
 # Optuna 목적 함수
 def objective(trial):
     num_layers = trial.suggest_int('num_layers', 2, 6)
-    num_heads = trial.suggest_int('num_heads', 4, 8)
+    num_heads = trial.suggest_int('num_heads', 2, 8)
     ff_dim = trial.suggest_int('ff_dim', 512, 2048)
+    hidden_size = trial.suggest_categorical('hidden_size', [512, 768])  # 호환 가능한 크기
     learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-3, log=True)
     batch_size = trial.suggest_categorical('batch_size', [16, 32])
 
+    if hidden_size % num_heads != 0:
+        raise optuna.exceptions.TrialPruned()
+
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
-    model = TransformerDecoderModel(num_layers=num_layers, num_heads=num_heads, ff_dim=ff_dim).to(device)
+    model = TransformerDecoderModel(
+        hidden_size=hidden_size,
+        vocab_size=tokenizer.vocab_size,
+        num_layers=num_layers,
+        num_heads=num_heads,
+        ff_dim=ff_dim
+    ).to(device)
+
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     loss_fn = nn.CrossEntropyLoss(ignore_index=tokenizer.pad_token_id)
 
@@ -129,10 +149,9 @@ def objective(trial):
         logger.info(f"Trial {trial.number} | Epoch {epoch+1} | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
         trial.report(val_loss, epoch)
         if trial.should_prune():
-            logger.info(f"Trial {trial.number} pruned at epoch {epoch+1}")
             raise optuna.exceptions.TrialPruned()
-
     return val_loss
+
 
 # 스터디 저장을 위한 SQLite 스토리지 설정
 study_name = "kobert_chatbot_study"
@@ -149,7 +168,7 @@ study = optuna.create_study(
 # 최적화 실행
 study.optimize(objective, n_trials=20)
 
-# 최적의 하이퍼파라미터와 성능 출력
+# 결과 출력
 logger.info(f"Best Trial: {study.best_trial.number}")
 logger.info(f"Best Value (Validation Loss): {study.best_trial.value:.4f}")
-logger.info(f"Best Params: {study.best_params}")
+logger.info(f"Best Params: {study.best_trial.params}")
