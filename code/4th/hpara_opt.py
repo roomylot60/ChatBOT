@@ -60,23 +60,21 @@ dataset = ChatDataset(data)
 
 # 모델 정의
 class TransformerDecoderModel(nn.Module):
-    def __init__(self, hidden_size=768, vocab_size=None, num_layers=4, num_heads=8, ff_dim=1024):
+    def __init__(self, vocab_size=tokenizer.vocab_size, num_layers=4, num_heads=8, ff_dim=1024):
         super().__init__()
-
-        if hidden_size % num_heads != 0:
-            raise ValueError(f"`hidden_size` ({hidden_size}) must be divisible by `num_heads` ({num_heads})")
-
         self.bert = kobert_model
-        self.decoder_embedding = nn.Embedding(vocab_size, hidden_size)
+        self.hidden_size = self.bert.config.hidden_size
 
+        # embed_dim이 num_heads로 나누어지는지 확인
+        if self.hidden_size % num_heads != 0:
+            raise ValueError(f"임베딩 차원({self.hidden_size})은 헤드 수({num_heads})로 나누어져야 합니다.")
+
+        self.decoder_embedding = nn.Embedding(vocab_size, self.hidden_size)
         decoder_layer = nn.TransformerDecoderLayer(
-            d_model=hidden_size,
-            nhead=num_heads,
-            dim_feedforward=ff_dim,
-            batch_first=True
+            d_model=self.hidden_size, nhead=num_heads, dim_feedforward=ff_dim, batch_first=True
         )
         self.decoder = nn.TransformerDecoder(decoder_layer, num_layers=num_layers)
-        self.output_layer = nn.Linear(hidden_size, vocab_size)
+        self.output_layer = nn.Linear(self.hidden_size, vocab_size)
 
     def forward(self, enc_input_ids, enc_mask, dec_input_ids):
         enc_output = self.bert(input_ids=enc_input_ids, attention_mask=enc_mask).last_hidden_state
@@ -124,16 +122,17 @@ def objective(trial):
     num_layers = trial.suggest_int('num_layers', 2, 6)
     num_heads = trial.suggest_int('num_heads', 2, 8)
     ff_dim = trial.suggest_int('ff_dim', 512, 2048)
-    hidden_size = trial.suggest_categorical('hidden_size', [512, 768])  # 호환 가능한 크기
     learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-3, log=True)
     batch_size = trial.suggest_categorical('batch_size', [16, 32])
+
+    # hidden_size는 KoBERT의 hidden_size로 고정
+    hidden_size = kobert_model.config.hidden_size
 
     if hidden_size % num_heads != 0:
         raise optuna.exceptions.TrialPruned()
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
     model = TransformerDecoderModel(
-        hidden_size=hidden_size,
         vocab_size=tokenizer.vocab_size,
         num_layers=num_layers,
         num_heads=num_heads,
