@@ -115,7 +115,7 @@ def objective(trial):
     num_layers = trial.suggest_int('num_layers', 2, 6)
     num_heads = trial.suggest_int('num_heads', 4, 8)
     ff_dim = trial.suggest_int('ff_dim', 512, 2048)
-    learning_rate = trial.suggest_loguniform('learning_rate', 1e-5, 1e-3)
+    learning_rate = trial.suggest_float('learning_rate', 1e-5, 1e-3, log=True)
     batch_size = trial.suggest_categorical('batch_size', [16, 32])
 
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_fn)
@@ -134,10 +134,22 @@ def objective(trial):
 
     return val_loss
 
-# Optuna 실행
-study = optuna.create_study(direction='minimize')
+# 스터디 저장을 위한 SQLite 스토리지 설정
+study_name = "kobert_chatbot_study"
+storage_name = f"sqlite:///{study_name}.db"
+
+# 스터디 생성 또는 기존 스터디 로드
+study = optuna.create_study(
+    study_name=study_name,
+    storage=storage_name,
+    direction='minimize',
+    load_if_exists=True
+)
+
+# 최적화 실행
 study.optimize(objective, n_trials=20)
 
+# 최적의 하이퍼파라미터와 성능 출력
 logger.info(f"Best Trial: {study.best_trial.number}")
 logger.info(f"Best Value (Validation Loss): {study.best_trial.value:.4f}")
 logger.info(f"Best Params: {study.best_params}")
